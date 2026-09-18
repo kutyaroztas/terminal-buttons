@@ -407,9 +407,19 @@ class App(Gtk.Window):
         # Bottom bar: group drop-down, buttons of that group, edit, settings
         bar = Gtk.Box(spacing=6, margin=4)
         bar.get_style_context().add_class("tb-bar")
-        self.group_combo = Gtk.ComboBoxText()
-        self.group_combo.connect("changed", self.fill_buttons)
-        bar.pack_start(self.group_combo, False, False, 0)
+        # A popover (drawn inside the window) instead of a ComboBox: the combo popup is a separate
+        # window that gets clipped near the screen edge, so not every group was always visible.
+        self.group = None
+        self.group_label = Gtk.Label(xalign=0)
+        group_box = Gtk.Box(spacing=8)
+        group_box.pack_start(self.group_label, True, True, 0)
+        group_box.pack_start(Gtk.Image.new_from_icon_name("pan-up-symbolic", Gtk.IconSize.BUTTON),
+                             False, False, 0)
+        self.group_btn = Gtk.MenuButton(direction=Gtk.ArrowType.UP)
+        self.group_btn.add(group_box)
+        self.group_popover = Gtk.Popover(position=Gtk.PositionType.TOP)
+        self.group_btn.set_popover(self.group_popover)
+        bar.pack_start(self.group_btn, False, False, 0)
         self.btnbox = Gtk.Box(spacing=2)
         scroller = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.AUTOMATIC,
                                       vscrollbar_policy=Gtk.PolicyType.NEVER)
@@ -941,19 +951,37 @@ class App(Gtk.Window):
             name = b.get("group") or DEFAULT_GROUP
             if name not in groups:
                 groups.append(name)
-        current = self.group_combo.get_active_text()
-        self.group_combo.handler_block_by_func(self.fill_buttons)
-        self.group_combo.remove_all()
+        if self.group not in groups:
+            self.group = groups[0] if groups else None
+
+        # Rebuild the popover list; it scrolls when there are many groups
+        old = self.group_popover.get_child()
+        if old is not None:
+            self.group_popover.remove(old)
+        items = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, margin=6)
         for name in groups:
-            self.group_combo.append_text(name)
-        self.group_combo.set_active(groups.index(current) if current in groups else 0)
-        self.group_combo.handler_unblock_by_func(self.fill_buttons)
+            item = Gtk.ModelButton(text=name, halign=Gtk.Align.FILL)
+            item.connect("clicked", self.select_group, name)
+            items.pack_start(item, False, False, 0)
+        scroller = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER,
+                                      propagate_natural_height=True,
+                                      propagate_natural_width=True,
+                                      max_content_height=360)
+        scroller.add(items)
+        scroller.show_all()
+        self.group_popover.add(scroller)
+        self.fill_buttons()
+
+    def select_group(self, _item, name):
+        self.group = name
+        self.group_popover.popdown()
         self.fill_buttons()
 
     def fill_buttons(self, *_):
         for child in self.btnbox.get_children():
             self.btnbox.remove(child)
-        group = self.group_combo.get_active_text()
+        group = self.group
+        self.group_label.set_text(group or "")
         for b in self.buttons:
             if (b.get("group") or DEFAULT_GROUP) == group:
                 self.btnbox.pack_start(self.make_button(b), False, False, 0)

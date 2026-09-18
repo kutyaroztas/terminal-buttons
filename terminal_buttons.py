@@ -376,6 +376,11 @@ class App(Gtk.Window):
         Gtk.StyleContext.add_provider_for_screen(
             Gdk.Screen.get_default(), self.css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
+        # Own header bar so it can be dark gray like GNOME Terminal's, whatever the GTK theme
+        header = Gtk.HeaderBar(show_close_button=True, title="Terminal Buttons")
+        header.get_style_context().add_class("tb-titlebar")
+        self.set_titlebar(header)
+
         root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         root.get_style_context().add_class("tb-root")
         self.add(root)
@@ -466,7 +471,13 @@ class App(Gtk.Window):
             ).format(**theme)
         else:
             css = ""
-        # The tab close button stays flat and small in every theme
+        # Dark gray title bar in every theme; the tab close button stays flat and small
+        css += ("headerbar.tb-titlebar { background-image: none; background-color: #2b2b2b;"
+                " color: #eeeeec; border-bottom: 1px solid #1a1a1a; box-shadow: none; }"
+                "headerbar.tb-titlebar label, headerbar.tb-titlebar button { color: #eeeeec; }"
+                "headerbar.tb-titlebar button { background-image: none; background-color: transparent;"
+                " border-color: transparent; box-shadow: none; }"
+                "headerbar.tb-titlebar button:hover { background-color: rgba(255, 255, 255, 0.14); }")
         css += (".tb-root button.tb-tabclose { background-image: none; background-color: transparent;"
                 " border: none; box-shadow: none; padding: 0 2px; min-width: 0; min-height: 0; }"
                 ".tb-root button.tb-tabclose:hover { background-color: alpha(#e95420, 0.6); }")

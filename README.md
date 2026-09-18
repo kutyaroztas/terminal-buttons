@@ -25,7 +25,8 @@ button bar, configurable shortcuts, and a settings dialog.
 
 **Terminal**
 - Tabs with a close button on each tab, drag to reorder, rename, and clone (same working directory). Double-click empty space in the tab strip to open a new tab.
-- Vertical and horizontal split panes, nested as deeply as you like.
+- Vertical and horizontal split panes, nested as deeply as you like. Every pane created by a split gets its own small tab header with the penguin icon, the
+  terminal title and a close button (the first pane is represented by the tab itself).
 - Search inside the terminal (`Ctrl+F`), with next/previous match.
 - Copy on select, middle-click paste, PuTTY-style right-click (copy selection / paste), or a
   right-click context menu.

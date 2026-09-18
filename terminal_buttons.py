@@ -330,10 +330,51 @@ def ordered_groups(names, order):
     return [g for g in order if g in present] + [g for g in present if g not in order]
 
 
+class Pane(Gtk.Box):
+    """A split-off terminal with its own small tab header (penguin, title, close button)."""
+
+    def __init__(self, term):
+        super().__init__(orientation=Gtk.Orientation.VERTICAL)
+        self.term = term
+        self.title_label = Gtk.Label(xalign=0, ellipsize=Pango.EllipsizeMode.END)
+        self.header = Gtk.EventBox(visible_window=True, no_show_all=True)
+        self.header.get_style_context().add_class("tb-panehead")
+        self.close_button = Gtk.Button(relief=Gtk.ReliefStyle.NONE, focus_on_click=False)
+        self.close_button.add(Gtk.Image.new_from_icon_name("window-close-symbolic", Gtk.IconSize.MENU))
+        self.close_button.get_style_context().add_class("tb-tabclose")
+        self.box = Gtk.Box(spacing=6)
+        self.header.add(self.box)
+        self.pack_start(self.header, False, False, 0)
+        self.pack_start(term, True, True, 0)
+
+
+def pane_unit(term):
+    """The widget that sits in the pane tree for `term`: its Pane wrapper, or the terminal itself."""
+    parent = term.get_parent()
+    return parent if isinstance(parent, Pane) else term
+
+
+def is_open(term):
+    return pane_unit(term).get_parent() is not None
+
+
+def terminals(widget):
+    """All terminals inside a pane tree."""
+    if isinstance(widget, Vte.Terminal):
+        return [widget]
+    if isinstance(widget, Pane):
+        return [widget.term]
+    if isinstance(widget, Gtk.Paned):
+        return terminals(widget.get_child1()) + terminals(widget.get_child2())
+    return []
+
+
 def first_terminal(widget):
     """Leftmost/topmost terminal inside a pane tree."""
     if isinstance(widget, Vte.Terminal):
         return widget
+    if isinstance(widget, Pane):
+        return widget.term
     if isinstance(widget, Gtk.Paned):
         return first_terminal(widget.get_child1())
     return None
@@ -504,6 +545,8 @@ class App(Gtk.Window):
                 "headerbar.tb-titlebar button { background-image: none; background-color: transparent;"
                 " border-color: transparent; box-shadow: none; }"
                 "headerbar.tb-titlebar button:hover { background-color: rgba(255, 255, 255, 0.14); }")
+        css += (".tb-root .tb-panehead { background-color: alpha(#e95420, 0.22); padding: 2px 6px;"
+                " border-bottom: 2px solid #e95420; }")
         css += (".tb-root button.tb-tabclose { background-image: none; background-color: transparent;"
                 " border: none; box-shadow: none; padding: 0 2px; min-width: 0; min-height: 0; }"
                 ".tb-root button.tb-tabclose:hover { background-color: alpha(#e95420, 0.6); }")
@@ -630,7 +673,7 @@ class App(Gtk.Window):
         if n >= 0:
             self.nb.set_current_page(n)
             term = page.last_term
-            if term is not None and term.get_parent() is not None:
+            if term is not None and is_open(term):
                 term.grab_focus()
         return False
 
@@ -648,7 +691,7 @@ class App(Gtk.Window):
         if page is None:
             return None
         term = page.last_term
-        if term is not None and term.get_parent() is not None:
+        if term is not None and is_open(term):
             return term
         return first_terminal(page.root())
 
@@ -660,6 +703,8 @@ class App(Gtk.Window):
         return False
 
     def on_terminal_title(self, term):
+        if isinstance(term.get_parent(), Pane):
+            term.get_parent().title_label.set_text(term.get_window_title() or self.tr("terminal"))
         page = self.page_of(term)
         if page is not None and page.last_term in (None, term):
             self.update_title(page, term)
@@ -678,14 +723,17 @@ class App(Gtk.Window):
 
     def split(self, term, orientation):
         """HORIZONTAL = side by side (vertical divider), VERTICAL = stacked."""
-        parent = term.get_parent()
+        unit = pane_unit(term)
+        parent = unit.get_parent()
         new = self.new_terminal()
+        pane = self.make_pane(new)
         paned = Gtk.Paned(orientation=orientation)
         paned.set_wide_handle(True)
-        replace_child(parent, term, paned)
-        paned.pack1(term, True, False)
-        paned.pack2(new, True, False)
+        replace_child(parent, unit, paned)
+        paned.pack1(unit, True, False)
+        paned.pack2(pane, True, False)
         paned.show_all()
+        self.refresh_headers(self.page_of(paned))
 
         def halve():
             horizontal = orientation == Gtk.Orientation.HORIZONTAL
@@ -695,18 +743,44 @@ class App(Gtk.Window):
         GLib.timeout_add(60, halve)
         new.grab_focus()
 
+    def make_pane(self, term):
+        """Wrap a split-off terminal with its own tab header."""
+        pane = Pane(term)
+        icon = self.tab_icon()
+        if icon is not None:
+            pane.box.pack_start(icon, False, False, 0)
+        pane.box.pack_start(pane.title_label, True, True, 0)
+        pane.box.pack_start(pane.close_button, False, False, 0)
+        pane.title_label.set_text(term.get_window_title() or self.tr("terminal"))
+        pane.close_button.set_tooltip_text(self.tr("close_pane"))
+        pane.close_button.connect("clicked", lambda _b: self.close_pane(term))
+        pane.header.connect("button-press-event", lambda *_: (term.grab_focus(), False)[1])
+        pane.box.show_all()  # header itself is no_show_all; refresh_headers() shows it
+        return pane
+
+    def refresh_headers(self, page):
+        """Pane headers are only shown while the tab is actually split."""
+        if page is None:
+            return
+        multiple = len(terminals(page.root())) > 1
+        for term in terminals(page.root()):
+            if isinstance(term.get_parent(), Pane):
+                term.get_parent().header.set_visible(multiple)
+
     def close_pane(self, term):
         page = self.page_of(term)
-        parent = term.get_parent()
+        unit = pane_unit(term)
+        parent = unit.get_parent()
         if page is None or parent is None:  # already closed
             return
         if isinstance(parent, Gtk.Paned):
-            sibling = parent.get_child2() if parent.get_child1() is term else parent.get_child1()
-            parent.remove(term)
+            sibling = parent.get_child2() if parent.get_child1() is unit else parent.get_child1()
+            parent.remove(unit)
             parent.remove(sibling)
             replace_child(parent.get_parent(), parent, sibling)
             survivor = first_terminal(sibling)
             page.last_term = survivor
+            self.refresh_headers(page)
             if survivor is not None:
                 survivor.grab_focus()
         else:
@@ -930,7 +1004,7 @@ class App(Gtk.Window):
 
     def search_term(self, page):
         term = page.last_term
-        return term if term is not None and term.get_parent() is not None else first_terminal(page.root())
+        return term if term is not None and is_open(term) else first_terminal(page.root())
 
     def open_search(self, page):
         if page is None:

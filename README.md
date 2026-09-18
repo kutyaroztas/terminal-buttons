@@ -24,7 +24,7 @@ button bar, configurable shortcuts, and a settings dialog.
 ## Features
 
 **Terminal**
-- Tabs with a close button on each tab, drag to reorder, rename, and clone (same working directory).
+- Tabs with a close button on each tab, drag to reorder, rename, and clone (same working directory). Double-click empty space in the tab strip to open a new tab.
 - Vertical and horizontal split panes, nested as deeply as you like.
 - Search inside the terminal (`Ctrl+F`), with next/previous match.
 - Copy on select, middle-click paste, PuTTY-style right-click (copy selection / paste), or a
@@ -101,7 +101,7 @@ cp terminal-buttons.svg ~/.local/share/icons/hicolor/scalable/apps/
 
 | Action | How |
 | --- | --- |
-| New tab | `+` button in the tab strip, or `Ctrl+Shift+T` |
+| New tab | `+` button in the tab strip, double-click empty space in the tab strip, or `Ctrl+Shift+T` |
 | Close tab | `✕` on the tab, or `Ctrl+W` |
 | Next / previous tab | `Ctrl+Tab` / `Ctrl+Shift+Tab` |
 | Clone tab | Double-click the tab (opens in the same working directory) |

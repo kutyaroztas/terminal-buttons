@@ -404,6 +404,8 @@ class App(Gtk.Window):
             tools.pack_start(button, False, False, 0)
         tools.show_all()
         self.nb.set_action_widget(tools, Gtk.PackType.END)
+        self.nb.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
+        self.nb.connect("button-press-event", self.strip_click)
         root.pack_start(self.nb, True, True, 0)
 
         # Bottom bar: group drop-down, buttons of that group, edit, settings
@@ -801,6 +803,22 @@ class App(Gtk.Window):
         menu.show_all()
         self.menu = menu  # keep a reference while it is open
         menu.popup_at_pointer(ev)
+
+    def strip_click(self, nb, ev):
+        """Double-click on the empty part of the tab strip opens a new tab."""
+        if ev.type != Gdk.EventType._2BUTTON_PRESS or ev.button != 1:
+            return False
+        page = nb.get_nth_page(nb.get_current_page())
+        if page is None or ev.y >= page.translate_coordinates(nb, 0, 0)[1]:
+            return False  # not in the strip (the strip is above the page content)
+        for i in range(nb.get_n_pages()):
+            label = nb.get_tab_label(nb.get_nth_page(i))
+            x, y = label.translate_coordinates(nb, 0, 0)
+            a = label.get_allocation()
+            if x <= ev.x < x + a.width and y <= ev.y < y + a.height:
+                return False  # on a tab: that has its own double-click (clone)
+        self.perform("new_tab")
+        return True
 
     def tab_click(self, _tab, ev, page):
         if ev.type == Gdk.EventType._2BUTTON_PRESS and ev.button == 1:

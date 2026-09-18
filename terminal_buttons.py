@@ -10,15 +10,18 @@ import re
 import gi
 
 gi.require_version("Gdk", "3.0")
+gi.require_version("GdkPixbuf", "2.0")
 gi.require_version("Gtk", "3.0")
 gi.require_version("Vte", "2.91")
-from gi.repository import Gdk, GLib, Gtk, Pango, Vte  # noqa: E402
+from gi.repository import Gdk, GdkPixbuf, GLib, Gtk, Pango, Vte  # noqa: E402
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_DIR = os.path.join(APP_DIR, "config")
 BUTTONS_FILE = os.path.join(CONFIG_DIR, "buttons.json")
 SETTINGS_FILE = os.path.join(CONFIG_DIR, "settings.json")
 ICON_FILE = os.path.join(APP_DIR, "terminal-buttons.svg")
+TAB_ICON_FILE = os.path.join(APP_DIR, "assets", "tab-icon.svg")
+TAB_ICON_SIZE = 18
 FONT = "Ubuntu Sans Mono 13"
 DEFAULT_GROUP = "General"
 
@@ -538,7 +541,10 @@ class App(Gtk.Window):
         close.set_tooltip_text(self.tr("close_tab"))
         close.connect("clicked", lambda _b: self.close_page(page))
         tab = Gtk.EventBox(visible_window=False)  # receives double/right clicks and hover
-        box = Gtk.Box(spacing=4)
+        box = Gtk.Box(spacing=6)
+        icon = self.tab_icon()
+        if icon is not None:
+            box.pack_start(icon, False, False, 0)
         box.pack_start(page.title_label, True, True, 0)
         box.pack_start(close, False, False, 0)
         tab.add(box)
@@ -552,6 +558,17 @@ class App(Gtk.Window):
         self.nb.set_tab_reorderable(page, True)
         self.nb.set_current_page(self.nb.page_num(page))
         term.grab_focus()
+
+    def tab_icon(self):
+        """The small penguin at the left of each tab, rendered sharp on HiDPI screens."""
+        scale = self.get_scale_factor()
+        try:
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
+                TAB_ICON_FILE, TAB_ICON_SIZE * scale, TAB_ICON_SIZE * scale)
+        except GLib.Error:
+            return None  # icon file missing: tabs simply have no icon
+        surface = Gdk.cairo_surface_create_from_pixbuf(pixbuf, scale, None)
+        return Gtk.Image.new_from_surface(surface)
 
     def clone_tab(self, page):
         """Open a new tab next to `page`, in the same working directory."""

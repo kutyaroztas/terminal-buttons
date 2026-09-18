@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a2a5c"/>
+      <stop offset="1" stop-color="#241033"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5b3a70"/>
+      <stop offset="1" stop-color="#3f2454"/>
+    </linearGradient>
+    <linearGradient id="screen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b0a26"/>
+      <stop offset="1" stop-color="#120619"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#000" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <!-- window body -->
+  <rect x="20" y="24" width="216" height="208" rx="26" fill="url(#body)" filter="url(#shadow)"/>
+  <rect x="20.5" y="24.5" width="215" height="207" rx="25.5" fill="none" stroke="#ffffff" stroke-opacity="0.18"/>
+
+  <!-- title bar -->
+  <path d="M20 50a26 26 0 0 1 26-26h164a26 26 0 0 1 26 26v14H20z" fill="url(#bar)"/>
+  <circle cx="46" cy="44" r="6" fill="#ff5f57"/>
+  <circle cx="66" cy="44" r="6" fill="#febc2e"/>
+  <circle cx="86" cy="44" r="6" fill="#28c840"/>
+
+  <!-- terminal screen -->
+  <rect x="34" y="72" width="188" height="108" rx="10" fill="url(#screen)"/>
+  <!-- prompt chevron -->
+  <path d="M56 100l28 20-28 20" fill="none" stroke="#8ae234" stroke-width="12"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- cursor / underscore -->
+  <rect x="98" y="134" width="46" height="10" rx="5" fill="#eeeeec"/>
+  <!-- faint output lines -->
+  <rect x="112" y="98" width="86" height="7" rx="3.5" fill="#eeeeec" fill-opacity="0.28"/>
+  <rect x="112" y="114" width="58" height="7" rx="3.5" fill="#eeeeec" fill-opacity="0.18"/>
+
+  <!-- button row (the "buttons" part of the app) -->
+  <rect x="34" y="192" width="52" height="26" rx="13" fill="#e95420"/>
+  <rect x="94" y="192" width="52" height="26" rx="13" fill="#729fcf"/>
+  <rect x="154" y="192" width="68" height="26" rx="13" fill="#8ae234"/>
+  <rect x="34" y="192" width="52" height="13" rx="6.5" fill="#fff" fill-opacity="0.22"/>
+  <rect x="94" y="192" width="52" height="13" rx="6.5" fill="#fff" fill-opacity="0.22"/>
+  <rect x="154" y="192" width="68" height="13" rx="6.5" fill="#fff" fill-opacity="0.22"/>
+</svg>

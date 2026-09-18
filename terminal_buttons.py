@@ -58,6 +58,7 @@ DEFAULT_SETTINGS = {
     "middle_paste": True,
     "paste_warning": True,
     "tab_hover_delay": 2.0,        # seconds of hovering before a tab is activated; 0 = off
+    "group_order": [],             # button-group names, first = top of the drop-down and shown at start
     "shortcuts": DEFAULT_SHORTCUTS,
 }
 
@@ -84,7 +85,7 @@ THEMES = {
 LANGS = {"en": "English", "de": "Deutsch", "fr": "Français", "tr": "Türkçe", "ru": "Русский"}
 STRINGS = {
     "en": {
-        "new_tab": "New tab", "edit_buttons": "Edit buttons",
+        "new_tab": "New tab", "edit_buttons": "Edit buttons", "group_order": "Group order",
         "settings": "Settings", "cancel": "Cancel", "save": "Save", "close": "Close",
         "col_label": "Label", "col_command": "Command (\\x03=Ctrl+C, \\t, \\e)",
         "col_enter": "Enter", "col_color": "Color", "col_group": "Group",
@@ -113,7 +114,7 @@ STRINGS = {
         "json_files": "Settings files (*.json)",
     },
     "de": {
-        "new_tab": "Neuer Tab", "edit_buttons": "Schaltflächen bearbeiten",
+        "new_tab": "Neuer Tab", "edit_buttons": "Schaltflächen bearbeiten", "group_order": "Gruppenreihenfolge",
         "settings": "Einstellungen", "cancel": "Abbrechen", "save": "Speichern",
         "close": "Schließen", "col_label": "Beschriftung",
         "col_command": "Befehl (\\x03=Strg+C, \\t, \\e)", "col_enter": "Enter",
@@ -145,7 +146,7 @@ STRINGS = {
         "json_files": "Einstellungsdateien (*.json)",
     },
     "fr": {
-        "new_tab": "Nouvel onglet", "edit_buttons": "Modifier les boutons",
+        "new_tab": "Nouvel onglet", "edit_buttons": "Modifier les boutons", "group_order": "Ordre des groupes",
         "settings": "Paramètres", "cancel": "Annuler", "save": "Enregistrer",
         "close": "Fermer", "col_label": "Libellé",
         "col_command": "Commande (\\x03=Ctrl+C, \\t, \\e)", "col_enter": "Entrée",
@@ -177,7 +178,7 @@ STRINGS = {
         "json_files": "Fichiers de paramètres (*.json)",
     },
     "tr": {
-        "new_tab": "Yeni sekme", "edit_buttons": "Düğmeleri düzenle",
+        "new_tab": "Yeni sekme", "edit_buttons": "Düğmeleri düzenle", "group_order": "Grup sırası",
         "settings": "Ayarlar", "cancel": "İptal", "save": "Kaydet", "close": "Kapat",
         "col_label": "Etiket", "col_command": "Komut (\\x03=Ctrl+C, \\t, \\e)",
         "col_enter": "Enter", "col_color": "Renk", "col_group": "Grup",
@@ -208,7 +209,7 @@ STRINGS = {
         "json_files": "Ayar dosyaları (*.json)",
     },
     "ru": {
-        "new_tab": "Новая вкладка", "edit_buttons": "Изменить кнопки",
+        "new_tab": "Новая вкладка", "edit_buttons": "Изменить кнопки", "group_order": "Порядок групп",
         "settings": "Настройки", "cancel": "Отмена", "save": "Сохранить",
         "close": "Закрыть", "col_label": "Название",
         "col_command": "Команда (\\x03=Ctrl+C, \\t, \\e)", "col_enter": "Enter",
@@ -318,7 +319,15 @@ def normalize_settings(saved):
         settings["lang"] = DEFAULT_SETTINGS["lang"]
     if settings["rightclick_action"] not in ("menu", "putty"):
         settings["rightclick_action"] = "menu"
+    order = settings["group_order"]
+    settings["group_order"] = [g for g in order if isinstance(g, str)] if isinstance(order, list) else []
     return settings
+
+
+def ordered_groups(names, order):
+    """Unique group names: those listed in `order` first (in that order), the rest as they appear."""
+    present = list(dict.fromkeys(names))
+    return [g for g in order if g in present] + [g for g in present if g not in order]
 
 
 def first_terminal(widget):
@@ -966,11 +975,8 @@ class App(Gtk.Window):
         term.grab_focus()
 
     def rebuild_buttons(self):
-        groups = []
-        for b in self.buttons:
-            name = b.get("group") or DEFAULT_GROUP
-            if name not in groups:
-                groups.append(name)
+        groups = ordered_groups((b.get("group") or DEFAULT_GROUP for b in self.buttons),
+                                self.settings["group_order"])
         if self.group not in groups:
             self.group = groups[0] if groups else None
 
@@ -1138,8 +1144,49 @@ class App(Gtk.Window):
             b = Gtk.Button(label=self.tr(key))
             b.connect("clicked", handler)
             row.pack_start(b, False, False, 0)
+        order_btn = Gtk.Button(label=self.tr("group_order") + "…")
+        order_btn.connect("clicked", lambda *_: self.order_dialog(dlg, store))
+        row.pack_end(order_btn, False, False, 0)
         area.pack_start(row, False, False, 0)
+        dlg.group_order = None  # set by the order dialog, applied on Save
         return dlg, store
+
+    def order_dialog(self, parent, store):
+        """Reorder the button groups with Up/Down; the result is kept on the editor dialog."""
+        current = parent.group_order if parent.group_order is not None else self.settings["group_order"]
+        groups = ordered_groups((r[3].strip() or DEFAULT_GROUP for r in store), current)
+        dlg = Gtk.Dialog(title=self.tr("group_order"), transient_for=parent, modal=True)
+        dlg.set_default_size(280, 320)
+        dlg.add_buttons(self.tr("cancel"), Gtk.ResponseType.CANCEL, self.tr("save"), Gtk.ResponseType.OK)
+        order = Gtk.ListStore(str)
+        for g in groups:
+            order.append([g])
+        tv = Gtk.TreeView(model=order, headers_visible=False)
+        tv.append_column(Gtk.TreeViewColumn("", Gtk.CellRendererText(), text=0))
+        tv.set_cursor(Gtk.TreePath.new_from_indices([0]))
+        scroller = Gtk.ScrolledWindow()
+        scroller.add(tv)
+        area = dlg.get_content_area()
+        area.set_spacing(6)
+        area.pack_start(scroller, True, True, 0)
+
+        def move(delta):
+            it = tv.get_selection().get_selected()[1]
+            if not it:
+                return
+            other = order.iter_previous(it) if delta < 0 else order.iter_next(it)
+            if other:
+                order.swap(it, other)
+        row = Gtk.Box(spacing=4)
+        for key, delta in (("up", -1), ("down", 1)):
+            b = Gtk.Button(label=self.tr(key))
+            b.connect("clicked", lambda _b, d=delta: move(d))
+            row.pack_start(b, False, False, 0)
+        area.pack_start(row, False, False, 0)
+        dlg.show_all()
+        if dlg.run() == Gtk.ResponseType.OK:
+            parent.group_order = [r[0] for r in order]
+        dlg.destroy()
 
     def edit_dialog(self, select=None):
         dlg, store = self.build_edit_dialog(select)
@@ -1149,6 +1196,9 @@ class App(Gtk.Window):
                              "group": r[3].strip() or DEFAULT_GROUP, "color": r[4]}
                             for r in store]
             write_json(BUTTONS_FILE, self.buttons)
+            if dlg.group_order is not None:
+                self.settings["group_order"] = dlg.group_order
+                self.save_settings()
             self.rebuild_buttons()
         dlg.destroy()
 

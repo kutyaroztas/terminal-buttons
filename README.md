@@ -149,6 +149,10 @@ right. In the editor:
 Double-click a cell to edit it. Use **Add**, **Delete**, **Up**, **Down** and **Clear color** for
 the rest. Changes are saved when you press **Save**.
 
+**Group order…** (bottom right of the editor) opens a small dialog where you move groups up and
+down. The first group is shown at the top of the group drop-down, and the app always starts with it
+selected. Groups you never ordered are listed after the ordered ones.
+
 Examples:
 
 | Label | Command | Enter | Effect |
@@ -205,7 +209,7 @@ Everything is stored next to the program in `config/`:
 | File | Content |
 | --- | --- |
 | `config/buttons.json` | Your buttons: label, command, enter, group, color |
-| `config/settings.json` | Theme, language, mouse options, hover delay, shortcuts |
+| `config/settings.json` | Theme, language, mouse options, hover delay, group order, shortcuts |
 
 Both files are plain JSON and can be edited by hand while the app is closed. They are listed in
 `.gitignore`, so your personal setup is never committed by accident. If a file is missing or

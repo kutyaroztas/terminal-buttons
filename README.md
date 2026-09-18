@@ -1,14 +1,14 @@
-# Terminal Buttons
+# Smart Terminal v1.0
 
 A tabbed terminal with a **customizable button bar**, in the spirit of SecureCRT and WindTerm.
 Click a button and its command (or keystroke) is sent to the terminal you are working in:
 `ls -larth`, `Ctrl+C`, `Esc`, a deploy script, anything you can type.
 
-![Terminal Buttons](docs/screenshot.png)
+![Smart Terminal](docs/screenshot.png)
 
 ## What it is
 
-Terminal Buttons is a small GTK 3 application written in Python. It is a **wrapper around the
+Smart Terminal (repository name: `terminal-buttons`) is a small GTK 3 application written in Python. It is a **wrapper around the
 [VTE](https://gitlab.gnome.org/GNOME/vte) terminal widget** (`Vte.Terminal`), the same widget that
 GNOME Terminal, Tilix, and many other Linux terminals use behind the scenes. The terminal
 emulation itself (colors, scrollback, mouse support, shell integration) is therefore identical to
@@ -81,7 +81,7 @@ the project):
 ```ini
 [Desktop Entry]
 Type=Application
-Name=Terminal Buttons
+Name=Smart Terminal
 Exec=python3 /path/to/terminal-buttons/terminal_buttons.py
 Icon=terminal-buttons
 StartupWMClass=terminal-buttons

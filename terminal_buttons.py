@@ -19,6 +19,8 @@ APP_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_DIR = os.path.join(APP_DIR, "config")
 BUTTONS_FILE = os.path.join(CONFIG_DIR, "buttons.json")
 SETTINGS_FILE = os.path.join(CONFIG_DIR, "settings.json")
+APP_NAME = "Smart Terminal"
+APP_VERSION = "1.0"
 ICON_FILE = os.path.join(APP_DIR, "terminal-buttons.svg")
 TAB_ICON_FILE = os.path.join(APP_DIR, "assets", "tab-icon.svg")
 TAB_ICON_SIZE = 18
@@ -370,7 +372,7 @@ class Page(Gtk.Box):
 
 class App(Gtk.Window):
     def __init__(self):
-        super().__init__(title="Terminal Buttons")
+        super().__init__(title=f"{APP_NAME} v{APP_VERSION}")
         self.set_default_size(1000, 650)
         self.buttons = load_buttons()
         self.settings = load_settings()
@@ -380,7 +382,7 @@ class App(Gtk.Window):
             Gdk.Screen.get_default(), self.css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
         # Own header bar so it can be dark gray like GNOME Terminal's, whatever the GTK theme
-        header = Gtk.HeaderBar(show_close_button=True, title="Terminal Buttons")
+        header = Gtk.HeaderBar(show_close_button=True, title=f"{APP_NAME} v{APP_VERSION}")
         header.get_style_context().add_class("tb-titlebar")
         self.set_titlebar(header)
 
@@ -1360,7 +1362,7 @@ class App(Gtk.Window):
 
 def main():
     GLib.set_prgname("terminal-buttons")  # matches the .desktop file (Wayland app id)
-    GLib.set_application_name("Terminal Buttons")
+    GLib.set_application_name(APP_NAME)
     try:
         Gtk.Window.set_default_icon_from_file(ICON_FILE)
     except GLib.Error:

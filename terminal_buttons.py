@@ -331,11 +331,13 @@ def ordered_groups(names, order):
 
 
 class Pane(Gtk.Box):
-    """A split-off terminal with its own small tab header (penguin, title, close button)."""
+    """A terminal with a scrollbar on its right and, for split-off panes, its own small tab
+    header (penguin, title, close button)."""
 
     def __init__(self, term):
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
         self.term = term
+        self.wants_header = False   # True for panes created by a split
         self.title_label = Gtk.Label(xalign=0, ellipsize=Pango.EllipsizeMode.END)
         self.header = Gtk.EventBox(visible_window=True, no_show_all=True)
         self.header.get_style_context().add_class("tb-panehead")
@@ -345,13 +347,20 @@ class Pane(Gtk.Box):
         self.box = Gtk.Box(spacing=6)
         self.header.add(self.box)
         self.pack_start(self.header, False, False, 0)
-        self.pack_start(term, True, True, 0)
+        body = Gtk.Box()
+        body.pack_start(term, True, True, 0)
+        self.scrollbar = Gtk.Scrollbar(orientation=Gtk.Orientation.VERTICAL,
+                                       adjustment=term.get_vadjustment())
+        body.pack_start(self.scrollbar, False, False, 0)
+        self.pack_start(body, True, True, 0)
 
 
 def pane_unit(term):
     """The widget that sits in the pane tree for `term`: its Pane wrapper, or the terminal itself."""
-    parent = term.get_parent()
-    return parent if isinstance(parent, Pane) else term
+    widget = term
+    while widget is not None and not isinstance(widget, Pane):
+        widget = widget.get_parent()
+    return widget if widget is not None else term
 
 
 def is_open(term):
@@ -594,7 +603,7 @@ class App(Gtk.Window):
         page = Page()
         term = self.new_terminal(cwd)
         page.last_term = term
-        page.pack_start(term, True, True, 0)
+        page.pack_start(self.make_pane(term, header=False), True, True, 0)
         self.build_search_bar(page)
         page.custom_title = title
         page.title_label.set_text(title or self.tr("terminal"))
@@ -703,8 +712,9 @@ class App(Gtk.Window):
         return False
 
     def on_terminal_title(self, term):
-        if isinstance(term.get_parent(), Pane):
-            term.get_parent().title_label.set_text(term.get_window_title() or self.tr("terminal"))
+        pane = pane_unit(term)
+        if isinstance(pane, Pane):
+            pane.title_label.set_text(term.get_window_title() or self.tr("terminal"))
         page = self.page_of(term)
         if page is not None and page.last_term in (None, term):
             self.update_title(page, term)
@@ -743,9 +753,10 @@ class App(Gtk.Window):
         GLib.timeout_add(60, halve)
         new.grab_focus()
 
-    def make_pane(self, term):
-        """Wrap a split-off terminal with its own tab header."""
+    def make_pane(self, term, header=True):
+        """Wrap a terminal (scrollbar; plus a tab header when it is split off)."""
         pane = Pane(term)
+        pane.wants_header = header
         icon = self.tab_icon()
         if icon is not None:
             pane.box.pack_start(icon, False, False, 0)
@@ -764,8 +775,9 @@ class App(Gtk.Window):
             return
         multiple = len(terminals(page.root())) > 1
         for term in terminals(page.root()):
-            if isinstance(term.get_parent(), Pane):
-                term.get_parent().header.set_visible(multiple)
+            pane = pane_unit(term)
+            if isinstance(pane, Pane):
+                pane.header.set_visible(multiple and pane.wants_header)
 
     def close_pane(self, term):
         page = self.page_of(term)
